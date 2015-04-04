@@ -74,11 +74,7 @@ class Encryption(object):
 
     @staticmethod
     def stringToHexList(hexString):
-        result = []
-
-        for i in range(len(hexString) - 1):
-            result.append(str(hexString[i]) + str(hexString[i + 1]))
-        return result
+        return [str(hexString[i]) + str(hexString[i + 1]) for i in range(0, len(hexString) - 1, 2)]
 
     def getMessage(self):
         return self.message
