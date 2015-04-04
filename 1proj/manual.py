@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+# -*- coding: utf_8 -*-
+
 #author: Jan Wrona
 #email: xwrona00@stud.fit.vutbr.cz
 
 from Encryption import Encryption as en
 import unicodedata as ud
-import re
+import re, sys
 
 #constants
 ################################################################################
@@ -52,10 +54,7 @@ ciphers = [
 '16437a03705e5b5e2e517c6a7b4122034362116d25706837711575314e70245b2d076d700772565c334c596c4d540e323713297a3375524d2473575d6c25036a122522337d7d7b7132387f106534303d6433527b2c5b387b374864391a4c31133e5a293111602e6b422d39753c2c267a2c0a5e4d632a144500426125640c17737743436d7778304e65386e69584e7e0829536327237e61214558'
 ]
 
-word_list = ['byt', 'ten', 'ktery', 'mit', 'jeho', 'ale', 'svuj', 'jako', 'moci', 'rok', 'pro', 'tak', 'tento', 'kdyz', 'vsechen', 'jak', 'aby', 'nebo', 'rici', 'jeden', 'jen', 'muj', 'jenz', 'clovek', 'stat', 'muset', 'velky', 'chtit', 'take', 'nez', 'jeste', 'pri', 'jit', 'pak', 'pred', 'dva', 'vsak', 'ani', 'vedet', 'novy', 'hodne', 'podle', 'dalsi', 'cely', 'jiny', 'prvni', 'mezi', 'dat', 'tady', 'den', 'tam', 'kde', 'doba', 'kazdy', 'druhy', 'misto', 'dobry', 'takovy', 'strana', 'protoze', 'nic', 'zacit', 'neco', 'zivot', 'videt', 'rikat', 'zeme', 'dite', 'maly', 'sam', 'bez', 'ruka', 'svet', 'dostat', 'prace', 'nejaky', 'proto']
-
-#c1 = '160a0d001a0000' #neconic
-#c2 = '19070105171c10' #ahojcus
+most_common_words = ['byt', 'ten', 'ktery', 'mit', 'jeho', 'ale', 'svuj', 'jako', 'moci', 'rok', 'pro', 'tak', 'tento', 'kdyz', 'vsechen', 'jak', 'aby', 'nebo', 'rici', 'jeden', 'jen', 'muj', 'jenz', 'clovek', 'stat', 'muset', 'velky', 'chtit', 'take', 'nez', 'jeste', 'pri', 'jit', 'pak', 'pred', 'dva', 'vsak', 'ani', 'vedet', 'novy', 'hodne', 'podle', 'dalsi', 'cely', 'jiny', 'prvni', 'mezi', 'dat', 'tady', 'den', 'tam', 'kde', 'doba', 'kazdy', 'druhy', 'misto', 'dobry', 'takovy', 'strana', 'protoze', 'nic', 'zacit', 'neco', 'zivot', 'videt', 'rikat', 'zeme', 'dite', 'maly', 'sam', 'bez', 'ruka', 'svet', 'dostat', 'prace', 'nejaky', 'proto']
 
 ################################################################################
 
@@ -65,35 +64,47 @@ def strip_accents(s):
     return ''.join(c for c in ud.normalize('NFD', s) if ud.category(c) != 'Mn')
 
 def xor_ciphers(ciphers):
-    ordlists = [en.hexListToIntList(en.stringToHexList(cip)[::2]) for cip in ciphers]
-    return [en.listXOR(ordlists[0], ordlist) for ordlist in ordlists[1:]]
+    return [en.listXOR(ciphers[0], cip) for cip in ciphers[1:]]
 
 def create_word_list(dict_file):
     word_list = []
-    with open(dict_file, 'r') as f:
+    with open(dict_file, mode = 'r', encoding = 'utf_8') as f:
         word_list = f.read().splitlines()
     return [strip_accents(word).lower() for word in word_list]
 ################################################################################
 
 if __name__ == "__main__":
-    xor_list = xor_ciphers(ciphers)
-    shortest = min([len(i) for i in xor_list])
+    if len(sys.argv) != 2:
+        exit(1)
 
-    word_set = frozenset(create_word_list(dict_file))
-    word_list = sorted(list(word_set), key = len, reverse = True)
-
+    ciphers = [en.hexListToIntList(en.stringToHexList(cip)[::2]) for cip in ciphers] #transform cipher text into list
+    xor_list = xor_ciphers(ciphers) #XOR first cipher with each other
+    shortest = min([len(i) for i in xor_list]) #calculate shortest cipher
     print('{} ciphers, {} shortest'.format(len(xor_list), shortest))
-    for word in word_list:
-        word = ' ' + word + ' '
-        word = en.stringToOrdList(word)
+
+    if sys.argv[1] == 'all':
+        word_set = frozenset(create_word_list(dict_file))
+        word_list = sorted(list(word_set), key = len, reverse = True)
+    elif sys.argv[1] == 'common':
+        word_list = most_common_words
+    else:
+        exit(1)
+
+    prog = re.compile(r'^[A-Za-z "\'.,?!]+$', re.ASCII)
+
+    for m1 in word_list:
+        sys.stdout.flush()
+        m1 = ' ' + m1 + ' ' #lil' edit
+        word = m1 #save for print
+        m1 = en.stringToOrdList(m1)
+
         for offset in range(shortest - len(word) + 1):
-            printable = True
-            for xor in xor_list:
-                m_xor = en.ordListToString(en.listXOR(word, xor[offset:]))
-                if not re.match(r'^[A-Z "\'.,?!]+$', m_xor, re.ASCII | re.IGNORECASE):
-                #if not m_xor.isprintable():
-                    printable = False
-            if printable:
-                print(word, offset)
-                for xor in xor_list:
-                    print('\t', en.ordListToString(en.listXOR(word, xor[offset:])))
+            for c1_xor_c2 in xor_list:
+                m2 = en.ordListToString(en.listXOR(m1, c1_xor_c2[offset:]))
+                if not prog.match(m2):
+                    break
+            else:
+                part_key = en.hexListToString(en.intListToHexList(en.listXOR(m1, ciphers[0][offset:])))
+                print('m1 = \'{}\'\toffset = {}\tkey = {}'.format(word, offset, part_key))
+                for c1_xor_c2 in xor_list:
+                    print('\t', en.ordListToString(en.listXOR(m1, c1_xor_c2[offset:])))
