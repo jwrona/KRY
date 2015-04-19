@@ -97,7 +97,7 @@ def decode_ciphertext(ciphertext):
         #block (IV in case of first block) to decode C^-1(block) into plaintext.
         for word_idx, word in enumerate(known_suffix):
             plain_int.append(bin_block_list[block_idx][word_idx] ^ word)
- 
+
     #Strip PKCS#7 padding and return plaintext in string representation.
     return ''.join(chr(i) for i in plain_int[:-plain_int[-1]])
 
